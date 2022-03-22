@@ -1,0 +1,9 @@
+{
+    "packages": [
+        "boost",
+        "qt",
+        "opencl-headers",
+        "vulkan-headers",
+        "sdl"
+    ]
+}
