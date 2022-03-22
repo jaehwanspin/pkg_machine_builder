@@ -22,7 +22,7 @@ def get_package_paths(package_name):
         "config.yml")
     with open(version_yml_path, "r") as f:
         version_yml = yaml.safe_load(f)
-    
+
     for version in version_yml["versions"]:
         package_paths.append(os.path.join(os.path.dirname(version_yml_path),
                              version_yml["versions"][version]["folder"]))
@@ -74,7 +74,10 @@ def be_ready_for_source_dir(package_name):
         os.mkdir(package_source_dir)
     
     for version in get_versions(package_name):
-        version_dir =     
+        version_dir = os.path.join(package_source_dir, version)
+        if not os.path.exists(version_dir):
+            os.mkdir(version_dir)
+            
     
     
     pass
