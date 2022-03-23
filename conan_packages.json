@@ -1,8 +1,5 @@
 {
     "packages": [
-        "boost",
-        "qt",
-        "soci",
-        "opencl-headers"
+        "opengl"
     ]
 }
