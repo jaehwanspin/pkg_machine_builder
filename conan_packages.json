@@ -1,5 +1,6 @@
 {
     "packages": [
-        "opengl"
+        "boost",
+        "qt"
     ]
 }

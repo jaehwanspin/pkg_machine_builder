@@ -1,10 +1,13 @@
 #!/usr/bin/python3
 
-import sys
+import getpass
 import os
 import re
 import json
 import yaml
+import shutil
+import subprocess
+import threading
 
 def clone_or_update_conan_center_index():
     if not os.path.exists("conan-center-index"):
@@ -48,9 +51,10 @@ def get_source_versions(pakcage_name):
     for package_path in package_paths:
         source_version_yml = None
         source_version_yml_path = os.path.join(package_path, "conandata.yml")
-        with open(source_version_yml_path, "r") as f:
-            source_version_yml = yaml.safe_load(f)
-        source_versions = list(source_version_yml["sources"].keys())
+        if os.path.exists(source_version_yml_path):
+            with open(source_version_yml_path, "r") as f:
+                source_version_yml = yaml.safe_load(f)
+            source_versions = list(source_version_yml["sources"].keys())
     return source_versions
 
 def get_source_url(pakcage_name, version):
@@ -60,16 +64,23 @@ def get_source_url(pakcage_name, version):
     for package_path in package_paths:
         source_version_yml = None
         source_version_yml_path = os.path.join(package_path, "conandata.yml")
-        with open(source_version_yml_path, "r") as f:
-            source_version_yml = yaml.safe_load(f)
-        if source_version_yml["sources"].get(version) is not None:
-            tmp_url = source_version_yml["sources"][version]["url"]
-            if type(tmp_url) is list:
-                source_url = tmp_url[0]
-            else:
-                source_url = tmp_url
-        # for versions in source_version_yml["sources"].keys():
-        #     source_versions.append(source_version_yml["sources"][versions])
+        if os.path.exists(source_version_yml_path):
+            with open(source_version_yml_path, "r") as f:
+                source_version_yml = yaml.safe_load(f)
+            if source_version_yml["sources"].get(version) is not None:
+                if type(source_version_yml["sources"].get(version)) is not list:
+                    tmp_url = source_version_yml["sources"][version]["url"]
+                    if type(tmp_url) is list:
+                        source_url = tmp_url[len(tmp_url) - 1]
+                    else:
+                        source_url = tmp_url
+                else:
+                    tmp_url = source_version_yml["sources"][version][0]["url"]
+                    if type(tmp_url) is list:
+                        source_url = tmp_url[len(tmp_url) - 1]
+                    else:
+                        source_url = tmp_url
+                
     return source_url
 
 def load_conan_packages():
@@ -93,8 +104,12 @@ def get_dependencies(package_name):
 
 def download_source(package_name, version):
     url = get_source_url(package_name, version)
-    print(package_name, version, url)
-    pass
+    if url != "":
+        print(package_name, version, url)
+        tmp = url.split("/")
+        wget_cmd = "wget " + url + " -O " + "sources/" + package_name + "/" + version + "/" + tmp[len(tmp) - 1];
+        if not os.path.exists("sources/" + package_name + "/" + version + "/" + tmp[len(tmp) - 1]):
+            os.system(wget_cmd)
 
 def be_ready_for_source_dir(package_name):
     if not os.path.exists("sources"):
@@ -109,26 +124,38 @@ def be_ready_for_source_dir(package_name):
         if not os.path.exists(version_dir):
             os.mkdir(version_dir)
         download_source(package_name, version)
-    pass
+
+def execute_conan_server():
+    return subprocess.Popen("gunicorn -b 0.0.0.0:9300 -w 4 -t 300 conans.server.server_launcher:app",
+                            stdout=subprocess.PIPE, shell=True)
+    
+
+def copy_and_modify_package(package_name):
+    # username = getpass.getuser()
+    src_dir = os.path.join("conan-center-index/recipes", package_name)
+    dst_dir = os.path.join("modified_packages", package_name)
+    res = shutil.copytree(src_dir, dst_dir)
+    
+    for version_dir in get_versions(package_name):
+        conandata_yml_path = os.path.join(os.path.join(dst_dir, version_dir), "conandata.yml")
+        if os.path.exists(conandata_yml_path):
+            conandata_yml = ""
+            with open(conandata_yml_path, "rw") as f:
+                conandata_yml = yaml.safe_load(f)
+                
+                
+    
+    print(res)
+    
 
 def start():
     msg = '''
-  ____ ___  _   _    _    _   _ 
- / ___/ _ \| \ | |  / \  | \ | |
-| |  | | | |  \| | / _ \ |  \| |
-| |__| |_| | |\  |/ ___ \| |\  |
- \____\___/|_| \_/_/   \_\_| \_|
- ____  _____ ______     _______ ____
-/ ___|| ____|  _ \ \   / / ____|  _ \
-\___ \|  _| | |_) \ \ / /|  _| | |_) |
- ___) | |___|  _ < \ V / | |___|  _ <
-|____/|_____|_| \_\ \_/  |_____|_| \_\
- ____  _   _ ___ _     ____  _____ ____
-| __ )| | | |_ _| |   |  _ \| ____|  _ \
-|  _ \| | | || || |   | | | |  _| | |_) |
-| |_) | |_| || || |___| |_| | |___|  _ <
-|____/ \___/|___|_____|____/|_____|_| \_\
-    '''
+  ____ ___  _   _    _    _   _     ____  _____ ______     _______ ____     ____  _   _ ___ _     ____  _____ ____   
+ / ___/ _ \| \ | |  / \  | \ | |   / ___|| ____|  _ \ \   / / ____|  _ \   | __ )| | | |_ _| |   |  _ \| ____|  _ \    
+| |  | | | |  \| | / _ \ |  \| |   \___ \|  _| | |_) \ \ / /|  _| | |_) |  |  _ \| | | || || |   | | | |  _| | |_) |     
+| |__| |_| | |\  |/ ___ \| |\  |    ___) | |___|  _ < \ V / | |___|  _ <   | |_) | |_| || || |___| |_| | |___|  _ <    
+ \____\___/|_| \_/_/   \_\_| \_|   |____/|_____|_| \_\ \_/  |_____|_| \_\  |____/ \___/|___|_____|____/|_____|_| \_\     
+'''
     print(msg)
 
 if __name__ == '__main__':
@@ -146,7 +173,16 @@ if __name__ == '__main__':
     for package_name in package_names:
         be_ready_for_source_dir(package_name)
     
+    conan_server_process = execute_conan_server()
+    
+    for package_name in package_names:
+        copy_and_modify_package(package_name)
+    
+    conan_server_process.kill()
+    
     b = 1
+    
+    
     
     pass
     
