@@ -134,27 +134,32 @@ def copy_and_modify_package(package_name):
     # username = getpass.getuser()
     src_dir = os.path.join("conan-center-index/recipes", package_name)
     dst_dir = os.path.join("modified_packages", package_name)
-    res = shutil.copytree(src_dir, dst_dir)
+    if not os.path.exists(dst_dir):
+        os.system("cp -r " + src_dir + " " + dst_dir)
     
-    for version_dir in get_versions(package_name):
-        conandata_yml_path = os.path.join(os.path.join(dst_dir, version_dir), "conandata.yml")
+    for version_dir in get_package_paths(package_name):
+        conandata_yml_path = os.path.join(version_dir, "conandata.yml")
         if os.path.exists(conandata_yml_path):
             conandata_yml = ""
-            with open(conandata_yml_path, "rw") as f:
-                conandata_yml = yaml.safe_load(f)
-                
-                
-    
-    print(res)
+            with open(conandata_yml_path, "r") as f:
+                conandata_yml = yaml.safe_load(f)   
+            print("*******************" + package_name + "*******************")
+            for version in conandata_yml["sources"]:
+                modified_url = "http://pkgmachine.local:8080/sources/" + package_name + "/"
+                print(json.dumps(conandata_yml["sources"][version], indent=4))
+                if type(conandata_yml["sources"][version]) is list:
+                    for i, _ in enumerate(conandata_yml["sources"][version]):
+                        enumerate(conandata_yml["sources"][version][i]["url"] = 
+    pass
     
 
 def start():
     msg = '''
-  ____ ___  _   _    _    _   _     ____  _____ ______     _______ ____     ____  _   _ ___ _     ____  _____ ____   
- / ___/ _ \| \ | |  / \  | \ | |   / ___|| ____|  _ \ \   / / ____|  _ \   | __ )| | | |_ _| |   |  _ \| ____|  _ \    
-| |  | | | |  \| | / _ \ |  \| |   \___ \|  _| | |_) \ \ / /|  _| | |_) |  |  _ \| | | || || |   | | | |  _| | |_) |     
-| |__| |_| | |\  |/ ___ \| |\  |    ___) | |___|  _ < \ V / | |___|  _ <   | |_) | |_| || || |___| |_| | |___|  _ <    
- \____\___/|_| \_/_/   \_\_| \_|   |____/|_____|_| \_\ \_/  |_____|_| \_\  |____/ \___/|___|_____|____/|_____|_| \_\     
+  ____ ___  _   _    _    _   _     ____  _____ ______     _______ ____     ____  _   _ ___ _     ____  _____ ____
+ / ___/ _ \| \ | |  / \  | \ | |   / ___|| ____|  _ \ \   / / ____|  _ \   | __ )| | | |_ _| |   |  _ \| ____|  _ \
+| |  | | | |  \| | / _ \ |  \| |   \___ \|  _| | |_) \ \ / /|  _| | |_) |  |  _ \| | | || || |   | | | |  _| | |_) |
+| |__| |_| | |\  |/ ___ \| |\  |    ___) | |___|  _ < \ V / | |___|  _ <   | |_) | |_| || || |___| |_| | |___|  _ <
+ \____\___/|_| \_/_/   \_\_| \_|   |____/|_____|_| \_\ \_/  |_____|_| \_\  |____/ \___/|___|_____|____/|_____|_| \_\
 '''
     print(msg)
 
